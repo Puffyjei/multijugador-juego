@@ -137,7 +137,16 @@ socket.on("chat", ({ name, msg }) => {
   div.textContent = name + ": " + msg;
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
+
+  // ✅ Mostrar el chat temporalmente si está oculto
+  if (chatInput.style.display === "none") {
+    chat.style.display = "block";
+    setTimeout(() => {
+      chat.style.display = "none";
+    }, 8000); // 8 segundos visible
+  }
 });
+
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
