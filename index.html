@@ -1,173 +1,32 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Juego Plataformero Multijugador</title>
-  <style>
-    html, body { margin: 0; padding: 0; overflow: hidden; background: #87CEEB; }
-    canvas { display: block; }
-    #menu {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background: white; padding: 20px; border-radius: 8px; z-index: 10;
-      text-align: center;
-    }
-    #controls {
-      position: absolute; bottom: 20px; left: 50%;
-      transform: translateX(-50%); display: flex; gap: 10px; z-index: 9;
-    }
-    .btn {
-      width: 60px; height: 60px;
-      background: #333; color: white; font-size: 24px;
-      border-radius: 50%; display: flex;
-      justify-content: center; align-items: center;
-      user-select: none;
-    }
-    #chat, #chatInput, #chatBtn {
-      z-index: 9;
-    }
-    #chat {
-      position: absolute; left: 10px; bottom: 100px;
-      width: 45%; max-height: 300px;
-      background: rgba(0,0,0,0.5); color: white;
-      padding: 10px; border-radius: 8px;
-      overflow-y: auto;
-      font-size: 14px; word-break: break-word;
-    }
-    #chatInput {
-      position: absolute; left: 10px; bottom: 60px;
-      width: 60%; padding: 8px; font-size: 16px;
-      display: none;
-    }
-    #chatBtn {
-      position: absolute; bottom: 60px; right: 10px;
-      width: 50px; height: 50px; font-size: 20px;
-      background: #333; color: white; border: none;
-      border-radius: 50%;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Juego Multijugador</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="menu">
+    <input type="text" id="nameInput" placeholder="Tu nombre">
+    <button onclick="startGame()">Entrar</button>
+  </div>
 
-<div id="menu">
-  <h2>Tu Nombre:</h2>
-  <input id="usernameInput" placeholder="Jugador" />
-  <br><br>
-  <button onclick="startGame()">Entrar</button>
-</div>
+  <canvas id="gameCanvas"></canvas>
 
-<canvas id="game"></canvas>
+  <div id="chatContainer">
+    <div id="messages"></div>
+    <input id="chatInput" type="text" placeholder="Escribe..." onkeydown="handleChatKey(event)">
+  </div>
 
-<div id="chat"></div>
-<input id="chatInput" placeholder="Escribe mensaje..." />
-<button id="chatBtn">Chat</button>
+  <div id="mobileControls">
+    <button id="leftBtn">←</button>
+    <button id="jumpBtn">↑</button>
+    <button id="rightBtn">→</button>
+    <button id="chatBtn" onclick="toggleChat()">💬</button>
+  </div>
 
-<div id="controls">
-  <div class="btn" id="btn-left">←</div>
-  <div class="btn" id="btn-jump">↑</div>
-  <div class="btn" id="btn-right">→</div>
-</div>
-
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script>
-const socket = io("https://multijugador-backend.onrender.com");
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const chat = document.getElementById("chat");
-const chatInput = document.getElementById("chatInput");
-const chatBtn = document.getElementById("chatBtn");
-let username = "";
-let players = {};
-let keys = {};
-let selfId = null;
-let cameraX = 0;
-
-function startGame() {
-  username = document.getElementById("usernameInput").value || "Jugador";
-  document.getElementById("menu").style.display = "none";
-  socket.emit("newPlayer", username);
-}
-
-chatBtn.onclick = () => {
-  chatInput.style.display = "block";
-  chatInput.focus();
-};
-
-chatInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") {
-    socket.emit("chat", chatInput.value);
-    chatInput.value = "";
-    chatInput.style.display = "none";
-  }
-});
-
-// Resize canvas
-window.addEventListener("resize", () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
-window.dispatchEvent(new Event("resize"));
-
-socket.on("init", id => selfId = id);
-socket.on("state", serverPlayers => {
-  players = serverPlayers;
-  draw();
-});
-socket.on("chat", ({ name, msg }) => {
-  const div = document.createElement("div");
-  div.textContent = name + ": " + msg;
-  chat.appendChild(div);
-  // limitar ancho: CSS con word-break
-  chat.scrollTop = chat.scrollHeight;
-});
-
-function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  const self = players[selfId];
-  if (!self) return;
-  cameraX = self.x - canvas.width/2;
-  // Fondo cielo azul
-  ctx.fillStyle = "#87CEEB";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  // Suelo original: simple rect
-  ctx.fillStyle = "#654321";
-  ctx.fillRect(-cameraX, 400, 10000, canvas.height - 400);
-  // Pared final
-  ctx.fillStyle = "#000";
-  ctx.fillRect(3000 - cameraX, 250, 20, 200);
-  // Dibujar jugadores
-  ctx.font = "16px Arial";
-  for (let id in players) {
-    const p = players[id];
-    const px = p.x - cameraX;
-    const py = p.y;
-    ctx.fillStyle = "red";
-    ctx.fillRect(px, py, 30, 30);
-    ctx.fillStyle = "white";
-    ctx.fillText(p.name, px + 15, py - 10);
-  }
-}
-
-setInterval(() => {
-  socket.emit("keys", keys);
-}, 1000/60);
-
-document.addEventListener("keydown", e => {
-  if (chatInput.style.display === "block") return;
-  keys[e.key] = true;
-});
-document.addEventListener("keyup", e => keys[e.key] = false);
-
-// Botones táctiles sin emojis
-document.getElementById("btn-left").ontouchstart = () => keys["ArrowLeft"] = true;
-document.getElementById("btn-left").ontouchend = () => keys["ArrowLeft"] = false;
-document.getElementById("btn-right").ontouchstart = () => keys["ArrowRight"] = true;
-document.getElementById("btn-right").ontouchend = () => keys["ArrowRight"] = false;
-document.getElementById("btn-jump").ontouchstart = () => {
-  if (!keys[" "]) keys[" "] = true;
-};
-document.getElementById("btn-jump").ontouchend = () => keys[" "] = false;
-</script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
