@@ -1,31 +1,36 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Juego Plataformero Multijugador</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Juego Multijugador</title>
   <style>
-    html, body { margin: 0; padding: 0; overflow: hidden; background: #87CEEB; }
-    canvas { display: block; }
+    html, body {
+      margin: 0; padding: 0;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      background: #87CEEB;
+    }
     #menu {
       position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      background: white; padding: 20px; border-radius: 8px; z-index: 10;
+      background: white; padding: 20px;
+      border-radius: 8px; z-index: 10;
       text-align: center;
     }
     #controls {
       position: absolute; bottom: 20px; left: 50%;
-      transform: translateX(-50%); display: flex; gap: 10px; z-index: 9;
+      transform: translateX(-50%);
+      display: flex; gap: 10px; z-index: 9;
     }
     .btn {
       width: 60px; height: 60px;
-      background: #333; color: white; font-size: 24px;
-      border-radius: 50%; display: flex;
-      justify-content: center; align-items: center;
-      user-select: none;
-    }
-    #chat, #chatInput, #chatBtn {
-      z-index: 9;
+      background: #333; color: white;
+      font-size: 24px; border-radius: 50%;
+      display: flex; justify-content: center;
+      align-items: center; user-select: none;
     }
     #chat {
       position: absolute; left: 10px; bottom: 100px;
@@ -33,7 +38,8 @@
       background: rgba(0,0,0,0.5); color: white;
       padding: 10px; border-radius: 8px;
       overflow-y: auto;
-      font-size: 14px; word-break: break-word;
+      font-size: 14px;
+      word-break: break-word;
     }
     #chatInput {
       position: absolute; left: 10px; bottom: 60px;
@@ -43,8 +49,8 @@
     #chatBtn {
       position: absolute; bottom: 60px; right: 10px;
       width: 50px; height: 50px; font-size: 20px;
-      background: #333; color: white; border: none;
-      border-radius: 50%;
+      background: #333; color: white;
+      border: none; border-radius: 50%;
     }
   </style>
 </head>
@@ -83,6 +89,9 @@ let keys = {};
 let selfId = null;
 let cameraX = 0;
 
+const robotImg = new Image();
+robotImg.src = "https://upload.wikimedia.org/wikipedia/commons/3/3c/Robot_icon.svg";
+
 function startGame() {
   username = document.getElementById("usernameInput").value || "Jugador";
   document.getElementById("menu").style.display = "none";
@@ -102,7 +111,6 @@ chatInput.addEventListener("keydown", e => {
   }
 });
 
-// Resize canvas
 window.addEventListener("resize", () => {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -118,62 +126,72 @@ socket.on("chat", ({ name, msg }) => {
   const div = document.createElement("div");
   div.textContent = name + ": " + msg;
   chat.appendChild(div);
-  // limitar ancho: CSS con word-break
   chat.scrollTop = chat.scrollHeight;
 });
 
 function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   const self = players[selfId];
   if (!self) return;
-  cameraX = self.x - canvas.width/2;
-  // Fondo cielo azul
+
+  cameraX = self.x - canvas.width / 2;
+
+  // Fondo cielo
   ctx.fillStyle = "#87CEEB";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  // Suelo original: simple rect
-  ctx.fillStyle = "#654321";
-  ctx.fillRect(-cameraX, 400, 10000, canvas.height - 400);
+
+  // Suelo bonito
+  ctx.fillStyle = "#228B22";
+  ctx.fillRect(-cameraX, 400, 5000, canvas.height - 400);
+
   // Pared final
   ctx.fillStyle = "#000";
   ctx.fillRect(3000 - cameraX, 250, 20, 200);
+
   // Dibujar jugadores
   ctx.font = "16px Arial";
   for (let id in players) {
     const p = players[id];
     const px = p.x - cameraX;
     const py = p.y;
-    ctx.fillStyle = "red";
-    ctx.fillRect(px, py, 30, 30);
-    ctx.fillStyle = "white";
-    ctx.fillText(p.name, px + 15, py - 10);
+
+    ctx.drawImage(robotImg, px, py, 40, 40);
+    ctx.fillStyle = "black";
+    ctx.textAlign = "center";
+    ctx.fillText(p.name, px + 20, py - 10);
   }
 }
 
+// Enviar teclas y prevenir salto continuo
 setInterval(() => {
   socket.emit("keys", keys);
 
-  // Evitar salto continuo si se mantiene presionado el espacio
   const self = players[selfId];
   if (self && self.vy !== 0) {
-    keys[" "] = false;
+    keys["ArrowUp"] = false;
   }
-}, 1000/60);
+}, 1000 / 60);
 
+// Controles teclado
 document.addEventListener("keydown", e => {
   if (chatInput.style.display === "block") return;
-  keys[e.key] = true;
+  if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.key)) {
+    keys[e.key] = true;
+  }
 });
-document.addEventListener("keyup", e => keys[e.key] = false);
+document.addEventListener("keyup", e => {
+  if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.key)) {
+    keys[e.key] = false;
+  }
+});
 
-// Botones táctiles sin emojis
+// Controles móviles sin emojis
 document.getElementById("btn-left").ontouchstart = () => keys["ArrowLeft"] = true;
 document.getElementById("btn-left").ontouchend = () => keys["ArrowLeft"] = false;
 document.getElementById("btn-right").ontouchstart = () => keys["ArrowRight"] = true;
 document.getElementById("btn-right").ontouchend = () => keys["ArrowRight"] = false;
-document.getElementById("btn-jump").ontouchstart = () => {
-  if (!keys[" "]) keys[" "] = true;
-};
-document.getElementById("btn-jump").ontouchend = () => keys[" "] = false;
+document.getElementById("btn-jump").ontouchstart = () => keys["ArrowUp"] = true;
+document.getElementById("btn-jump").ontouchend = () => keys["ArrowUp"] = false;
 </script>
 </body>
 </html>
