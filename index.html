@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Juego Plataformero Multijugador</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <div id="controls">
+    <div class="btn" id="left">←</div>
+    <div class="btn" id="right">→</div>
+    <div class="btn" id="jump">↑</div>
+  </div>
+
+  <script>
+    const socket = io("https://TU_BACKEND_URL"); // ← CAMBIA ESTO DESPUÉS
+
+    let cursors, player, players = {};
+
+    const config = {
+      type: Phaser.AUTO,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      physics: {
+        default: 'arcade',
+        arcade: { gravity: { y: 500 } }
+      },
+      scene: {
+        preload,
+        create,
+        update
+      }
+    };
+
+    const game = new Phaser.Game(config);
+
+    function preload() {
+      this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
+      this.load.image('player', 'https://labs.phaser.io/assets/sprites/phaser-dude.png');
+    }
+
+    function create() {
+      this.platforms = this.physics.add.staticGroup();
+      this.platforms.create(400, 580, 'ground').setScale(2).refreshBody();
+
+      cursors = this.input.keyboard.createCursorKeys();
+
+      player = this.physics.add.sprite(Phaser.Math.Between(100, 700), 0, 'player');
+      player.setCollideWorldBounds(true);
+      this.physics.add.collider(player, this.platforms);
+
+      // Controles táctiles
+      document.getElementById("left").ontouchstart = () => cursors.left.isDown = true;
+      document.getElementById("left").ontouchend = () => cursors.left.isDown = false;
+      document.getElementById("right").ontouchstart = () => cursors.right.isDown = true;
+      document.getElementById("right").ontouchend = () => cursors.right.isDown = false;
+      document.getElementById("jump").ontouchstart = () => cursors.up.isDown = true;
+      document.getElementById("jump").ontouchend = () => cursors.up.isDown = false;
+
+      socket.emit("newPlayer");
+
+      socket.on("updatePlayers", remotePlayers => {
+        for (let id in remotePlayers) {
+          if (!players[id] && id !== socket.id) {
+            const p = this.add.sprite(remotePlayers[id].x, remotePlayers[id].y, 'player');
+            players[id] = p;
+          } else if (id !== socket.id) {
+            players[id].x = remotePlayers[id].x;
+            players[id].y = remotePlayers[id].y;
+          }
+        }
+      });
+
+      socket.on("removePlayer", id => {
+        if (players[id]) {
+          players[id].destroy();
+          delete players[id];
+        }
+      });
+    }
+
+    function update() {
+      if (!player) return;
+
+      const speed = 200;
+
+      if (cursors.left.isDown) player.setVelocityX(-speed);
+      else if (cursors.right.isDown) player.setVelocityX(speed);
+      else player.setVelocityX(0);
+
+      if (cursors.up.isDown && player.body.touching.down) {
+        player.setVelocityY(-350);
+      }
+
+      socket.emit("playerMove", { x: player.x, y: player.y });
+    }
+  </script>
+</body>
+</html>
