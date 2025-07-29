@@ -33,17 +33,22 @@
       align-items: center; user-select: none;
     }
     #chat {
-      position: absolute; left: 10px; bottom: 100px;
+      position: absolute;
+      left: 10px; bottom: 100px;
       width: 45%; max-height: 300px;
-      background: rgba(0,0,0,0.5); color: white;
+      background: rgba(0,0,0,0.5);
+      color: white;
       padding: 10px; border-radius: 8px;
       overflow-y: auto;
       font-size: 14px;
       word-break: break-word;
+      display: none;
     }
     #chatInput {
-      position: absolute; left: 10px; bottom: 60px;
-      width: 60%; padding: 8px; font-size: 16px;
+      position: absolute;
+      left: 10px; bottom: 60px;
+      width: 60%; padding: 8px;
+      font-size: 16px;
       display: none;
     }
     #chatBtn {
@@ -65,10 +70,9 @@
 
 <canvas id="game"></canvas>
 
-<div id="chatContainer" style="display: none;">
-  <div id="chat"></div>
-  <input id="chatInput" placeholder="Escribe mensaje..." />
-</div>
+<div id="chat"></div>
+<input id="chatInput" placeholder="Escribe mensaje..." />
+<button id="chatBtn">Chat</button>
 
 <div id="controls">
   <div class="btn" id="btn-left">←</div>
@@ -84,6 +88,7 @@ const ctx = canvas.getContext("2d");
 const chat = document.getElementById("chat");
 const chatInput = document.getElementById("chatInput");
 const chatBtn = document.getElementById("chatBtn");
+
 let username = "";
 let players = {};
 let keys = {};
@@ -91,8 +96,7 @@ let selfId = null;
 let cameraX = 0;
 
 const robotImg = new Image();
-robotImg.src = "https://labs.phaser.io/assets/sprites/dude.png";
-
+robotImg.src = "https://labs.phaser.io/assets/sprites/robot.png";
 
 function startGame() {
   username = document.getElementById("usernameInput").value || "Jugador";
@@ -102,14 +106,16 @@ function startGame() {
 
 chatBtn.onclick = () => {
   chatInput.style.display = "block";
+  chat.style.display = "block";
   chatInput.focus();
 };
 
 chatInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") {
+  if (e.key === "Enter" && chatInput.value.trim() !== "") {
     socket.emit("chat", chatInput.value);
     chatInput.value = "";
     chatInput.style.display = "none";
+    chat.style.display = "none";
   }
 });
 
@@ -120,10 +126,12 @@ window.addEventListener("resize", () => {
 window.dispatchEvent(new Event("resize"));
 
 socket.on("init", id => selfId = id);
+
 socket.on("state", serverPlayers => {
   players = serverPlayers;
   draw();
 });
+
 socket.on("chat", ({ name, msg }) => {
   const div = document.createElement("div");
   div.textContent = name + ": " + msg;
@@ -133,33 +141,39 @@ socket.on("chat", ({ name, msg }) => {
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   const self = players[selfId];
   if (!self) return;
 
   cameraX = self.x - canvas.width / 2;
 
+  // Cielo
   ctx.fillStyle = "#87CEEB";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  // Suelo verde largo
   ctx.fillStyle = "#228B22";
   ctx.fillRect(-cameraX, 400, 5000, canvas.height - 400);
 
+  // Pared final
   ctx.fillStyle = "#000";
   ctx.fillRect(3000 - cameraX, 250, 20, 200);
 
+  // Dibujar jugadores
   ctx.font = "16px Arial";
   for (let id in players) {
     const p = players[id];
     const px = p.x - cameraX;
     const py = p.y;
 
-    ctx.drawImage(robotImg, 0, 0, 72, 97, px, py, 40, 54);
+    ctx.drawImage(robotImg, px, py, 40, 40);
     ctx.fillStyle = "black";
     ctx.textAlign = "center";
     ctx.fillText(p.name, px + 20, py - 10);
   }
 }
 
+// Saltos sin volar
 setInterval(() => {
   socket.emit("keys", keys);
   const self = players[selfId];
@@ -168,18 +182,21 @@ setInterval(() => {
   }
 }, 1000 / 60);
 
+// Controles de teclado
 document.addEventListener("keydown", e => {
   if (chatInput.style.display === "block") return;
   if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.key)) {
     keys[e.key] = true;
   }
 });
+
 document.addEventListener("keyup", e => {
   if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.key)) {
     keys[e.key] = false;
   }
 });
 
+// Controles móviles
 document.getElementById("btn-left").ontouchstart = () => keys["ArrowLeft"] = true;
 document.getElementById("btn-left").ontouchend = () => keys["ArrowLeft"] = false;
 document.getElementById("btn-right").ontouchstart = () => keys["ArrowRight"] = true;
@@ -189,4 +206,3 @@ document.getElementById("btn-jump").ontouchend = () => keys["ArrowUp"] = false;
 </script>
 </body>
 </html>
-
