@@ -96,6 +96,9 @@ let selfId = null;
 let cameraX = 0;
 
 const robotImg = new Image();
+  robotImg.onload = () => {
+  console.log("✅ Robot cargado");
+};
 robotImg.src = "https://labs.phaser.io/assets/sprites/robot.png";
 
 function startGame() {
