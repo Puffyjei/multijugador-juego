@@ -90,7 +90,7 @@ let selfId = null;
 let cameraX = 0;
 
 const robotImg = new Image();
-robotImg.src = "https://upload.wikimedia.org/wikipedia/commons/3/3c/Robot_icon.svg";
+robotImg.src = "robot.png";
 
 function startGame() {
   username = document.getElementById("usernameInput").value || "Jugador";
@@ -136,19 +136,15 @@ function draw() {
 
   cameraX = self.x - canvas.width / 2;
 
-  // Fondo cielo
   ctx.fillStyle = "#87CEEB";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Suelo bonito
   ctx.fillStyle = "#228B22";
   ctx.fillRect(-cameraX, 400, 5000, canvas.height - 400);
 
-  // Pared final
   ctx.fillStyle = "#000";
   ctx.fillRect(3000 - cameraX, 250, 20, 200);
 
-  // Dibujar jugadores
   ctx.font = "16px Arial";
   for (let id in players) {
     const p = players[id];
@@ -162,17 +158,14 @@ function draw() {
   }
 }
 
-// Enviar teclas y prevenir salto continuo
 setInterval(() => {
   socket.emit("keys", keys);
-
   const self = players[selfId];
   if (self && self.vy !== 0) {
     keys["ArrowUp"] = false;
   }
 }, 1000 / 60);
 
-// Controles teclado
 document.addEventListener("keydown", e => {
   if (chatInput.style.display === "block") return;
   if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.key)) {
@@ -185,7 +178,6 @@ document.addEventListener("keyup", e => {
   }
 });
 
-// Controles móviles sin emojis
 document.getElementById("btn-left").ontouchstart = () => keys["ArrowLeft"] = true;
 document.getElementById("btn-left").ontouchend = () => keys["ArrowLeft"] = false;
 document.getElementById("btn-right").ontouchstart = () => keys["ArrowRight"] = true;
@@ -195,3 +187,4 @@ document.getElementById("btn-jump").ontouchend = () => keys["ArrowUp"] = false;
 </script>
 </body>
 </html>
+
