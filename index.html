@@ -152,7 +152,7 @@ function draw() {
     const px = p.x - cameraX;
     const py = p.y;
 
-    ctx.drawImage(robotImg, px, py, 40, 40);
+    ctx.drawImage(robotImg, 0, 0, 72, 97, px, py, 40, 54);
     ctx.fillStyle = "black";
     ctx.textAlign = "center";
     ctx.fillText(p.name, px + 20, py - 10);
