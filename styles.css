@@ -1,14 +1,71 @@
-body, html { margin: 0; padding: 0; overflow: hidden; }
-canvas { display: block; }
-#controls {
-  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 10px;
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: sans-serif;
 }
-.btn {
-  width: 60px; height: 60px; background: #333; border-radius: 50%; color: white;
-  font-size: 24px; display: flex; align-items: center; justify-content: center;
-  user-select: none;
+
+#menu {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: #87ceeb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
 }
-@media (min-width: 768px) {
-  #controls { display: none; }
+
+#menu input, #menu button {
+  margin: 10px;
+  padding: 10px;
+  font-size: 18px;
+}
+
+#gameCanvas {
+  display: block;
+  background: url('https://i.imgur.com/dv9YbVb.png') repeat-x;
+  background-size: cover;
+}
+
+#mobileControls {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 5;
+  display: flex;
+  gap: 5px;
+}
+
+#mobileControls button {
+  padding: 15px;
+  font-size: 20px;
+}
+
+#chatContainer {
+  position: absolute;
+  left: 0;
+  bottom: 60px;
+  width: 40%;
+  max-width: 300px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: 14px;
+  padding: 5px;
+  z-index: 5;
+}
+
+#chatContainer input {
+  width: 100%;
+  padding: 5px;
+  font-size: 14px;
+  box-sizing: border-box;
+  border: none;
+}
+
+#messages {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 5px;
+  word-wrap: break-word;
 }
