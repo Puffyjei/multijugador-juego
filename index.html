@@ -2,10 +2,10 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Juego Plataformero Multijugador</title>
+  <title>Warmail Game</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    html, body { margin: 0; padding: 0; overflow: hidden; }
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #87CEFA; }
     canvas { display: block; }
 
     #menu {
@@ -17,6 +17,7 @@
       border-radius: 10px;
       text-align: center;
       box-shadow: 0 0 20px rgba(0,0,0,0.2);
+      z-index: 10;
     }
 
     #controls {
@@ -24,6 +25,7 @@
       bottom: 20px; left: 50%;
       transform: translateX(-50%);
       display: flex; gap: 10px;
+      z-index: 5;
     }
 
     .btn {
@@ -32,6 +34,17 @@
       color: white; font-size: 24px;
       display: flex; align-items: center; justify-content: center;
       user-select: none;
+    }
+
+    #chatInput {
+      position: absolute;
+      bottom: 10px; left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      padding: 10px;
+      font-size: 16px;
+      display: none;
+      z-index: 10;
     }
 
     @media (min-width: 768px) {
@@ -56,9 +69,11 @@
   <div class="btn" id="jump">↑</div>
 </div>
 
+<input id="chatInput" placeholder="Escribe tu mensaje y pulsa Enter" />
+
 <script>
-let cursors, player, players = {}, labels = {}, myName = "";
-let socket;
+let cursors, player, players = {}, labels = {}, chatBubbles = {}, myName = "";
+let socket, chatInput, typing = false;
 
 function startGame() {
   myName = document.getElementById("username").value || "SinNombre";
@@ -68,6 +83,7 @@ function startGame() {
 
 function initGame() {
   socket = io("https://multijugador-backend.onrender.com");
+  chatInput = document.getElementById("chatInput");
 
   const config = {
     type: Phaser.AUTO,
@@ -92,7 +108,7 @@ function initGame() {
   }
 
   function create() {
-    const levelWidth = 2000;
+    const levelWidth = 5000;
     this.cameras.main.setBounds(0, 0, levelWidth, 600);
     this.physics.world.setBounds(0, 0, levelWidth, 600);
 
@@ -125,11 +141,14 @@ function initGame() {
           labels[id] = this.add.text(data[id].x, data[id].y - 30, data[id].name || "?", {
             font: "16px Arial", fill: "#fff"
           }).setOrigin(0.5);
+          chatBubbles[id] = this.add.text(data[id].x, data[id].y - 60, "", {
+            font: "14px Arial", fill: "#000", backgroundColor: "#fff"
+          }).setOrigin(0.5);
         } else {
           players[id].x = data[id].x;
           players[id].y = data[id].y;
-          labels[id].x = players[id].x;
-          labels[id].y = players[id].y - 30;
+          labels[id].setPosition(players[id].x, players[id].y - 30);
+          chatBubbles[id].setPosition(players[id].x, players[id].y - 60);
         }
       }
     });
@@ -138,26 +157,65 @@ function initGame() {
       if (players[id]) {
         players[id].destroy();
         labels[id].destroy();
+        chatBubbles[id].destroy();
         delete players[id];
         delete labels[id];
+        delete chatBubbles[id];
       }
+    });
+
+    socket.on("chatMessage", ({ id, text }) => {
+      if (chatBubbles[id]) {
+        chatBubbles[id].setText(text);
+        setTimeout(() => {
+          if (chatBubbles[id]) chatBubbles[id].setText("");
+        }, 3000);
+      }
+    });
+
+    // Chat key
+    this.input.keyboard.on('keydown-ENTER', () => {
+      if (!typing) {
+        chatInput.style.display = "block";
+        chatInput.focus();
+        typing = true;
+      } else {
+        sendMessage();
+      }
+    });
+
+    chatInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") sendMessage();
     });
   }
 
   function update() {
     if (!player) return;
 
-    const speed = 200;
+    const speed = 300; // MÁS VELOCIDAD
+    const jumpPower = 500; // SALTO MÁS FUERTE
 
-    if (cursors.left.isDown) player.setVelocityX(-speed);
-    else if (cursors.right.isDown) player.setVelocityX(speed);
-    else player.setVelocityX(0);
+    if (!typing) {
+      if (cursors.left.isDown) player.setVelocityX(-speed);
+      else if (cursors.right.isDown) player.setVelocityX(speed);
+      else player.setVelocityX(0);
 
-    if (cursors.up.isDown && player.body.touching.down) {
-      player.setVelocityY(-400);
+      if (cursors.up.isDown && player.body.touching.down) {
+        player.setVelocityY(-jumpPower);
+      }
     }
 
     socket.emit("playerMove", { x: player.x, y: player.y });
+  }
+
+  function sendMessage() {
+    const msg = chatInput.value.trim();
+    if (msg !== "") {
+      socket.emit("chatMessage", msg);
+    }
+    chatInput.value = "";
+    chatInput.style.display = "none";
+    typing = false;
   }
 
   function setupTouchControls() {
