@@ -1,249 +1,236 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Warmail Game</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Juego Multijugador</title>
   <style>
-    html, body { margin: 0; padding: 0; overflow: hidden; background: #87CEFA; }
-    canvas { display: block; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      background: url('https://i.imgur.com/9zF2qfX.jpg') no-repeat center center fixed;
+      background-size: cover;
+    }
+
+    canvas {
+      display: block;
+      background: transparent;
+    }
 
     #menu {
       position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
-      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 50, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
       z-index: 10;
     }
 
-    #controls {
+    #menu input {
+      padding: 10px;
+      font-size: 20px;
+      margin-top: 10px;
+    }
+
+    .controls {
       position: absolute;
-      bottom: 20px; left: 50%;
+      bottom: 20px;
+      left: 50%;
       transform: translateX(-50%);
-      display: flex; gap: 10px;
-      z-index: 5;
+      display: flex;
+      gap: 15px;
+      z-index: 9;
     }
 
     .btn {
-      width: 60px; height: 60px;
-      background: #333; border-radius: 50%;
-      color: white; font-size: 24px;
-      display: flex; align-items: center; justify-content: center;
-      user-select: none;
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0,0,0,0.5);
+      color: white;
+    }
+
+    #chat {
+      position: absolute;
+      left: 10px;
+      bottom: 100px;
+      width: 45%;
+      max-height: 300px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.4);
+      color: white;
+      font-size: 14px;
+      padding: 10px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      z-index: 9;
     }
 
     #chatInput {
       position: absolute;
-      bottom: 10px; left: 50%;
-      transform: translateX(-50%);
-      width: 80%;
+      left: 10px;
+      bottom: 60px;
+      width: 60%;
       padding: 10px;
       font-size: 16px;
       display: none;
-      z-index: 10;
+      z-index: 9;
     }
 
-    @media (min-width: 768px) {
-      #controls { display: none; }
+    #chatBtn {
+      position: absolute;
+      bottom: 60px;
+      right: 10px;
+      width: 50px;
+      height: 50px;
+      font-size: 20px;
+      z-index: 9;
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3"></script>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
+  <div id="menu">
+    <h1>Tu Nombre:</h1>
+    <input id="usernameInput" placeholder="Escribe tu nombre..." />
+    <button onclick="startGame()">Entrar</button>
+  </div>
 
-<div id="menu">
-  <h2>Tu nombre:</h2>
-  <input type="text" id="username" placeholder="Jugador" />
-  <br/><br/>
-  <button onclick="startGame()">Jugar</button>
-</div>
+  <canvas id="game"></canvas>
 
-<div id="controls">
-  <div class="btn" id="left">←</div>
-  <div class="btn" id="right">→</div>
-  <div class="btn" id="jump">↑</div>
-</div>
+  <div id="chat"></div>
+  <input id="chatInput" placeholder="Escribe mensaje..." />
+  <button id="chatBtn">💬</button>
 
-<input id="chatInput" placeholder="Escribe tu mensaje y pulsa Enter" />
+  <div class="controls">
+    <button class="btn" ontouchstart="move('left')" ontouchend="stop()">◀️</button>
+    <button class="btn" ontouchstart="move('up')" ontouchend="stop()">⬆️</button>
+    <button class="btn" ontouchstart="move('right')" ontouchend="stop()">▶️</button>
+  </div>
 
-<script>
-let cursors, player, players = {}, labels = {}, chatBubbles = {}, myName = "";
-let socket, chatInput, typing = false;
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const socket = io('https://multijugador-backend.onrender.com');
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const chat = document.getElementById('chat');
+    const chatInput = document.getElementById('chatInput');
+    const chatBtn = document.getElementById('chatBtn');
+    let username = '';
+    let players = {};
+    let keys = {};
+    let selfId = null;
 
-function startGame() {
-  myName = document.getElementById("username").value || "SinNombre";
-  document.getElementById("menu").style.display = "none";
-  initGame();
-}
+    let cameraX = 0;
+    const groundY = 400;
+    const levelWidth = 3000;
 
-function initGame() {
-  socket = io("https://multijugador-backend.onrender.com");
-  chatInput = document.getElementById("chatInput");
-
-  const config = {
-    type: Phaser.AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    physics: {
-      default: 'arcade',
-      arcade: { gravity: { y: 600 }, debug: false }
-    },
-    scene: {
-      preload,
-      create,
-      update
-    }
-  };
-
-  const game = new Phaser.Game(config);
-
-  function preload() {
-    this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
-    this.load.image('player', 'https://labs.phaser.io/assets/sprites/phaser-dude.png');
-  }
-
-  function create() {
-    const levelWidth = 5000;
-    this.cameras.main.setBounds(0, 0, levelWidth, 600);
-    this.physics.world.setBounds(0, 0, levelWidth, 600);
-
-    this.platforms = this.physics.add.staticGroup();
-    for (let x = 0; x < levelWidth; x += 400) {
-      this.platforms.create(x, 580, 'ground').setScale(2).refreshBody();
+    function startGame() {
+      username = document.getElementById('usernameInput').value || 'Jugador';
+      document.getElementById('menu').style.display = 'none';
+      socket.emit('newPlayer', username);
     }
 
-    // Pared al final
-    this.platforms.create(levelWidth - 30, 400, 'ground').setScale(0.5, 5).refreshBody();
+    chatBtn.onclick = () => {
+      chatInput.style.display = 'block';
+      chatInput.focus();
+    };
 
-    cursors = this.input.keyboard.createCursorKeys();
-
-    player = this.physics.add.sprite(100, 0, 'player');
-    player.setCollideWorldBounds(true);
-    this.physics.add.collider(player, this.platforms);
-    this.cameras.main.startFollow(player);
-
-    // Controles táctiles
-    setupTouchControls();
-
-    socket.emit("newPlayer", { name: myName });
-
-    socket.on("updatePlayers", data => {
-      for (let id in data) {
-        if (id === socket.id) continue;
-
-        if (!players[id]) {
-          players[id] = this.add.sprite(data[id].x, data[id].y, 'player');
-          labels[id] = this.add.text(data[id].x, data[id].y - 30, data[id].name || "?", {
-            font: "16px Arial", fill: "#fff"
-          }).setOrigin(0.5);
-          chatBubbles[id] = this.add.text(data[id].x, data[id].y - 60, "", {
-            font: "14px Arial", fill: "#000", backgroundColor: "#fff"
-          }).setOrigin(0.5);
-        } else {
-          players[id].x = data[id].x;
-          players[id].y = data[id].y;
-          labels[id].setPosition(players[id].x, players[id].y - 30);
-          chatBubbles[id].setPosition(players[id].x, players[id].y - 60);
-        }
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        socket.emit('chat', chatInput.value);
+        chatInput.value = '';
+        chatInput.style.display = 'none';
       }
     });
 
-    socket.on("removePlayer", id => {
-      if (players[id]) {
-        players[id].destroy();
-        labels[id].destroy();
-        chatBubbles[id].destroy();
-        delete players[id];
-        delete labels[id];
-        delete chatBubbles[id];
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+
+    window.dispatchEvent(new Event('resize'));
+
+    socket.on('init', (id) => selfId = id);
+
+    socket.on('state', (serverPlayers) => {
+      players = serverPlayers;
+      draw();
+    });
+
+    socket.on('chat', ({ name, msg }) => {
+      const div = document.createElement('div');
+      div.textContent = `${name}: ${msg}`;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    });
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const self = players[selfId];
+      if (!self) return;
+
+      // Cámara centrada en el jugador
+      cameraX = self.x - canvas.width / 2;
+
+      // Fondo cielo azul ya aplicado con CSS
+
+      // Suelo con textura
+      ctx.fillStyle = '#654321';
+      const patternWidth = 100;
+      for (let x = 0; x < levelWidth; x += patternWidth) {
+        ctx.fillRect(x - cameraX, groundY, patternWidth - 2, 50);
       }
-    });
 
-    socket.on("chatMessage", ({ id, text }) => {
-      if (chatBubbles[id]) {
-        chatBubbles[id].setText(text);
-        setTimeout(() => {
-          if (chatBubbles[id]) chatBubbles[id].setText("");
-        }, 3000);
-      }
-    });
+      // Pared final
+      ctx.fillStyle = '#222';
+      ctx.fillRect(levelWidth - cameraX, groundY - 150, 20, 200);
 
-    // Chat key
-    this.input.keyboard.on('keydown-ENTER', () => {
-      if (!typing) {
-        chatInput.style.display = "block";
-        chatInput.focus();
-        typing = true;
-      } else {
-        sendMessage();
-      }
-    });
+      for (let id in players) {
+        const p = players[id];
+        const px = p.x - cameraX;
+        const py = p.y;
 
-    chatInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") sendMessage();
-    });
-  }
-
-  function update() {
-    if (!player) return;
-
-    const speed = 300; // MÁS VELOCIDAD
-    const jumpPower = 500; // SALTO MÁS FUERTE
-
-    if (!typing) {
-      if (cursors.left.isDown) player.setVelocityX(-speed);
-      else if (cursors.right.isDown) player.setVelocityX(speed);
-      else player.setVelocityX(0);
-
-      if (cursors.up.isDown && player.body.touching.down) {
-        player.setVelocityY(-jumpPower);
+        ctx.fillStyle = 'red';
+        ctx.fillRect(px, py, 30, 30);
+        ctx.fillStyle = 'white';
+        ctx.fillText(p.name, px, py - 10);
       }
     }
-
-    socket.emit("playerMove", { x: player.x, y: player.y });
-  }
-
-  function sendMessage() {
-    const msg = chatInput.value.trim();
-    if (msg !== "") {
-      socket.emit("chatMessage", msg);
-    }
-    chatInput.value = "";
-    chatInput.style.display = "none";
-    typing = false;
-  }
-
-  function setupTouchControls() {
-    const left = document.getElementById("left");
-    const right = document.getElementById("right");
-    const jump = document.getElementById("jump");
-
-    let moveLeft = false, moveRight = false, jumpNow = false;
-
-    left.ontouchstart = () => moveLeft = true;
-    left.ontouchend = () => moveLeft = false;
-
-    right.ontouchstart = () => moveRight = true;
-    right.ontouchend = () => moveRight = false;
-
-    jump.ontouchstart = () => jumpNow = true;
-    jump.ontouchend = () => jumpNow = false;
 
     setInterval(() => {
-      if (cursors) {
-        cursors.left.isDown = moveLeft;
-        cursors.right.isDown = moveRight;
-        cursors.up.isDown = jumpNow;
-      }
-    }, 50);
-  }
-}
-</script>
+      socket.emit('keys', keys);
+    }, 1000 / 60);
 
+    document.addEventListener('keydown', (e) => {
+      if (chatInput.style.display === 'block') return;
+      keys[e.key] = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+      keys[e.key] = false;
+    });
+
+    // Controles móviles
+    function move(dir) {
+      if (dir === 'left') keys['ArrowLeft'] = true;
+      if (dir === 'right') keys['ArrowRight'] = true;
+      if (dir === 'up') keys[' '] = true;
+    }
+
+    function stop() {
+      keys['ArrowLeft'] = false;
+      keys['ArrowRight'] = false;
+      keys[' '] = false;
+    }
+  </script>
 </body>
 </html>
