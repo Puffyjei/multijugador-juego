@@ -96,8 +96,9 @@ let selfId = null;
 let cameraX = 0;
 
 const robotImg = new Image();
-  robotImg.onload = () => {
-  console.log("✅ Robot cargado");
+robotImg.crossOrigin = "anonymous";
+robotImg.src = "https://raw.githubusercontent.com/photonstorm/phaser3-examples/master/public/assets/sprites/dude.png";
+
 };
 robotImg.src = "https://labs.phaser.io/assets/sprites/robot.png";
 
