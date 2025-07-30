@@ -262,4 +262,11 @@ document.getElementById("btn-right").ontouchstart = () => {
 };
 document.getElementById("btn-right").ontouchend = () => keys["ArrowRight"] = false;
 document.getElementById("btn-jump").ontouchstart = () => keys["ArrowUp"] = true;
-document.getElementById("btn-jump").ontouchend = () => keys["ArrowUp"] = false
+document.getElementById("btn-jump").ontouchend = () => keys["ArrowUp"] = false;
+
+attackBtn.onclick = () => {
+  if (mode === "bronx") socket.emit("attack", lastDirection);
+};
+</script>
+</body>
+</html>
