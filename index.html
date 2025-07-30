@@ -21,12 +21,27 @@
       transform: translateX(-50%);
       display: flex; gap: 10px; z-index: 9;
     }
+
     .btn {
       width: 60px; height: 60px;
       background: #333; color: white;
       font-size: 24px; border-radius: 50%;
       display: flex; justify-content: center;
       align-items: center; user-select: none;
+    }
+
+    #attackBtn {
+      display: none;
+      position: absolute;
+      bottom: 90px;
+      right: 10px;
+      width: 60px;
+      height: 60px;
+      background: red;
+      color: white;
+      font-size: 28px;
+      border-radius: 50%;
+      z-index: 10;
     }
 
     #chat {
@@ -88,6 +103,8 @@
   <div class="btn" id="btn-right">→</div>
 </div>
 
+<button id="attackBtn">⚔️</button>
+
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 <script defer>
@@ -97,6 +114,8 @@ let keys = {};
 let selfId = null;
 let cameraX = 0;
 let username = "";
+let lastDirection = "right";
+let mode = "";
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -104,31 +123,33 @@ const ctx = canvas.getContext("2d");
 const chat = document.getElementById("chat");
 const chatInput = document.getElementById("chatInput");
 const chatBtn = document.getElementById("chatBtn");
+const attackBtn = document.getElementById("attackBtn");
 
 const robotImg = new Image();
 robotImg.crossOrigin = "anonymous";
-robotImg.src = "robot.png"; // asegúrate de que esté bien alojado en tu repo
+robotImg.src = "robot.png";
 
-function selectMode(mode) {
+function selectMode(selectedMode) {
   const usernameInput = document.getElementById("usernameInput");
   username = usernameInput.value.trim() || "Jugador";
+  mode = selectedMode;
 
   let serverURL = "";
   if (mode === "tranqui") {
     serverURL = "https://multijugador-backend.onrender.com";
   } else if (mode === "bronx") {
     serverURL = "https://multijugador-backend-1.onrender.com";
+    attackBtn.style.display = "block";
   } else if (mode === "creativo") {
     serverURL = "https://multijugador-backend-2.onrender.com";
   }
 
   socket = io(serverURL);
-
   document.getElementById("menu").style.display = "none";
+
   socket.emit("newPlayer", username);
 
   socket.on("init", id => selfId = id);
-
   socket.on("state", serverPlayers => {
     players = serverPlayers;
     draw();
@@ -139,7 +160,6 @@ function selectMode(mode) {
     div.textContent = name + ": " + msg;
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
-
     if (chatInput.style.display === "none") {
       chat.style.display = "block";
       setTimeout(() => {
@@ -151,9 +171,7 @@ function selectMode(mode) {
   setInterval(() => {
     if (socket) socket.emit("keys", keys);
     const self = players[selfId];
-    if (self && self.vy !== 0) {
-      keys["ArrowUp"] = false;
-    }
+    if (self && self.vy !== 0) keys["ArrowUp"] = false;
   }, 1000 / 60);
 }
 
@@ -165,14 +183,12 @@ function draw() {
 
   cameraX = self.x - canvas.width / 2;
 
-  ctx.fillStyle = "#87CEEB"; // cielo
+  ctx.fillStyle = "#87CEEB";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Plataforma base
   ctx.fillStyle = "#228B22";
   ctx.fillRect(-cameraX, 400, 5000, 100);
 
-  // Pared final
   ctx.fillStyle = "#000";
   ctx.fillRect(3000 - cameraX, 250, 20, 200);
 
@@ -186,6 +202,13 @@ function draw() {
     ctx.fillStyle = "black";
     ctx.textAlign = "center";
     ctx.fillText(p.name, px + 20, py - 54);
+
+    if (mode === "bronx") {
+      ctx.fillStyle = "red";
+      ctx.fillRect(px, py - 44, 40, 5);
+      ctx.fillStyle = "lime";
+      ctx.fillRect(px, py - 44, (p.life / 100) * 40, 5);
+    }
   }
 }
 
@@ -214,6 +237,11 @@ document.addEventListener("keydown", e => {
   if (chatInput.style.display === "block") return;
   if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.key)) {
     keys[e.key] = true;
+    if (e.key === "ArrowLeft") lastDirection = "left";
+    if (e.key === "ArrowRight") lastDirection = "right";
+  }
+  if (mode === "bronx" && e.key === "a") {
+    socket.emit("attack", lastDirection);
   }
 });
 
@@ -223,12 +251,15 @@ document.addEventListener("keyup", e => {
   }
 });
 
-document.getElementById("btn-left").ontouchstart = () => keys["ArrowLeft"] = true;
+document.getElementById("btn-left").ontouchstart = () => {
+  keys["ArrowLeft"] = true;
+  lastDirection = "left";
+};
 document.getElementById("btn-left").ontouchend = () => keys["ArrowLeft"] = false;
-document.getElementById("btn-right").ontouchstart = () => keys["ArrowRight"] = true;
+document.getElementById("btn-right").ontouchstart = () => {
+  keys["ArrowRight"] = true;
+  lastDirection = "right";
+};
 document.getElementById("btn-right").ontouchend = () => keys["ArrowRight"] = false;
 document.getElementById("btn-jump").ontouchstart = () => keys["ArrowUp"] = true;
-document.getElementById("btn-jump").ontouchend = () => keys["ArrowUp"] = false;
-</script>
-</body>
-</html>
+document.getElementById("btn-jump").ontouchend = () => keys["ArrowUp"] = false
