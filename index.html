@@ -51,6 +51,17 @@
       background: #333; color: white;
       border: none; border-radius: 50%;
     }
+
+    .mode-btn {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background: #333;
+      color: white;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -59,7 +70,10 @@
   <h2>Tu Nombre:</h2>
   <input id="usernameInput" placeholder="Jugador" />
   <br><br>
-  <button onclick="startGame()">Entrar</button>
+  <h3>Selecciona modo de juego:</h3>
+  <button class="mode-btn" onclick="selectMode('tranqui')">Modo Tranqui</button>
+  <button class="mode-btn" onclick="selectMode('bronx')">Modo Bronx</button>
+  <button class="mode-btn" onclick="selectMode('creativo')">Modo Creativo</button>
 </div>
 
 <canvas id="game"></canvas>
@@ -74,12 +88,16 @@
   <div class="btn" id="btn-right">→</div>
 </div>
 
-<!-- 🔧 Importante: sin "defer" aquí -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
-<!-- Tu script original con defer -->
 <script defer>
-const socket = io("https://multijugador-backend.onrender.com");
+let socket;
+let players = {};
+let keys = {};
+let selfId = null;
+let cameraX = 0;
+let username = "";
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -87,21 +105,95 @@ const chat = document.getElementById("chat");
 const chatInput = document.getElementById("chatInput");
 const chatBtn = document.getElementById("chatBtn");
 
-let username = "";
-let players = {};
-let keys = {};
-let selfId = null;
-let cameraX = 0;
-
 const robotImg = new Image();
 robotImg.crossOrigin = "anonymous";
-robotImg.src = "robot.png";
+robotImg.src = "robot.png"; // asegúrate de que esté bien alojado en tu repo
 
-function startGame() {
-  username = document.getElementById("usernameInput").value || "Jugador";
+function selectMode(mode) {
+  const usernameInput = document.getElementById("usernameInput");
+  username = usernameInput.value.trim() || "Jugador";
+
+  let serverURL = "";
+  if (mode === "tranqui") {
+    serverURL = "https://multijugador-backend.onrender.com";
+  } else if (mode === "bronx") {
+    serverURL = "https://multijugador-backend-1.onrender.com";
+  } else if (mode === "creativo") {
+    serverURL = "https://multijugador-backend-2.onrender.com";
+  }
+
+  socket = io(serverURL);
+
   document.getElementById("menu").style.display = "none";
   socket.emit("newPlayer", username);
+
+  socket.on("init", id => selfId = id);
+
+  socket.on("state", serverPlayers => {
+    players = serverPlayers;
+    draw();
+  });
+
+  socket.on("chat", ({ name, msg }) => {
+    const div = document.createElement("div");
+    div.textContent = name + ": " + msg;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+
+    if (chatInput.style.display === "none") {
+      chat.style.display = "block";
+      setTimeout(() => {
+        chat.style.display = "none";
+      }, 8000);
+    }
+  });
+
+  setInterval(() => {
+    if (socket) socket.emit("keys", keys);
+    const self = players[selfId];
+    if (self && self.vy !== 0) {
+      keys["ArrowUp"] = false;
+    }
+  }, 1000 / 60);
 }
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const self = players[selfId];
+  if (!self) return;
+
+  cameraX = self.x - canvas.width / 2;
+
+  ctx.fillStyle = "#87CEEB"; // cielo
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Plataforma base
+  ctx.fillStyle = "#228B22";
+  ctx.fillRect(-cameraX, 400, 5000, 100);
+
+  // Pared final
+  ctx.fillStyle = "#000";
+  ctx.fillRect(3000 - cameraX, 250, 20, 200);
+
+  ctx.font = "16px Arial";
+  for (let id in players) {
+    const p = players[id];
+    const px = p.x - cameraX;
+    const py = p.y;
+
+    ctx.drawImage(robotImg, 32 * 4, 0, 32, 38, px, py - 38, 40, 48);
+    ctx.fillStyle = "black";
+    ctx.textAlign = "center";
+    ctx.fillText(p.name, px + 20, py - 54);
+  }
+}
+
+window.addEventListener("resize", () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+window.dispatchEvent(new Event("resize"));
 
 chatBtn.onclick = () => {
   chatInput.style.display = "block";
@@ -117,74 +209,6 @@ chatInput.addEventListener("keydown", e => {
     chat.style.display = "none";
   }
 });
-
-window.addEventListener("resize", () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
-window.dispatchEvent(new Event("resize"));
-
-socket.on("init", id => selfId = id);
-
-socket.on("state", serverPlayers => {
-  players = serverPlayers;
-  draw();
-});
-
-socket.on("chat", ({ name, msg }) => {
-  const div = document.createElement("div");
-  div.textContent = name + ": " + msg;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-
-  if (chatInput.style.display === "none") {
-    chat.style.display = "block";
-    setTimeout(() => {
-      chat.style.display = "none";
-    }, 8000);
-  }
-});
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const self = players[selfId];
-  if (!self) return;
-
-  cameraX = self.x - canvas.width / 2;
-
-  ctx.fillStyle = "#87CEEB"; // cielo
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Plataforma verde rectangular gruesa
-  ctx.fillStyle = "#228B22"; // color verde
-  ctx.fillRect(-cameraX, 400, 5000, 100); // altura fija de 100px
-
-
-  ctx.fillStyle = "#000"; // pared final
-  ctx.fillRect(3000 - cameraX, 250, 20, 200);
-
-  ctx.font = "16px Arial";
-  for (let id in players) {
-    const p = players[id];
-    const px = p.x - cameraX;
-    const py = p.y;
-
-    ctx.drawImage(robotImg, 32 * 4, 0, 32, 38, px, py - 38, 40, 48);
-    ctx.fillStyle = "black";
-    ctx.textAlign = "center";
-    ctx.fillText(p.name, px + 20, py - 54);
-
-  }
-}
-
-setInterval(() => {
-  socket.emit("keys", keys);
-  const self = players[selfId];
-  if (self && self.vy !== 0) {
-    keys["ArrowUp"] = false;
-  }
-}, 1000 / 60);
 
 document.addEventListener("keydown", e => {
   if (chatInput.style.display === "block") return;
