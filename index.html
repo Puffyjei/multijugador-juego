@@ -30,20 +30,6 @@
       align-items: center; user-select: none;
     }
 
-    #attackBtn {
-      display: none;
-      position: absolute;
-      bottom: 90px;
-      right: 10px;
-      width: 60px;
-      height: 60px;
-      background: red;
-      color: white;
-      font-size: 28px;
-      border-radius: 50%;
-      z-index: 10;
-    }
-
     #chat {
       position: absolute; left: 10px; bottom: 100px;
       width: 45%; max-height: 300px;
@@ -65,6 +51,14 @@
       width: 50px; height: 50px; font-size: 20px;
       background: #333; color: white;
       border: none; border-radius: 50%;
+    }
+
+    #attackBtn {
+      position: absolute; bottom: 120px; right: 10px;
+      width: 50px; height: 50px; font-size: 20px;
+      background: crimson; color: white;
+      border: none; border-radius: 50%;
+      display: none;
     }
 
     .mode-btn {
@@ -96,14 +90,13 @@
 <div id="chat"></div>
 <input id="chatInput" placeholder="Escribe mensaje..." />
 <button id="chatBtn">Chat</button>
+<button id="attackBtn">⚔️</button>
 
 <div id="controls">
   <div class="btn" id="btn-left">←</div>
   <div class="btn" id="btn-jump">↑</div>
   <div class="btn" id="btn-right">→</div>
 </div>
-
-<button id="attackBtn">⚔️</button>
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
@@ -114,8 +107,8 @@ let keys = {};
 let selfId = null;
 let cameraX = 0;
 let username = "";
-let lastDirection = "right";
-let mode = "";
+let lastDir = "right";
+let currentMode = "";
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -129,27 +122,27 @@ const robotImg = new Image();
 robotImg.crossOrigin = "anonymous";
 robotImg.src = "robot.png";
 
-function selectMode(selectedMode) {
+function selectMode(mode) {
+  currentMode = mode;
   const usernameInput = document.getElementById("usernameInput");
   username = usernameInput.value.trim() || "Jugador";
-  mode = selectedMode;
 
   let serverURL = "";
   if (mode === "tranqui") {
     serverURL = "https://multijugador-backend.onrender.com";
   } else if (mode === "bronx") {
     serverURL = "https://multijugador-backend-1.onrender.com";
-    attackBtn.style.display = "block";
   } else if (mode === "creativo") {
     serverURL = "https://multijugador-backend-2.onrender.com";
   }
 
   socket = io(serverURL);
   document.getElementById("menu").style.display = "none";
-
+  if (mode === "bronx") attackBtn.style.display = "block";
   socket.emit("newPlayer", username);
 
   socket.on("init", id => selfId = id);
+
   socket.on("state", serverPlayers => {
     players = serverPlayers;
     draw();
@@ -160,24 +153,28 @@ function selectMode(selectedMode) {
     div.textContent = name + ": " + msg;
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
+
     if (chatInput.style.display === "none") {
       chat.style.display = "block";
       setTimeout(() => {
-        chat.style.display = "none";
-      }, 8000);
+        if (chatInput.style.display === "none") {
+          chat.style.display = "none";
+        }
+      }, 10000);
     }
   });
 
   setInterval(() => {
     if (socket) socket.emit("keys", keys);
     const self = players[selfId];
-    if (self && self.vy !== 0) keys["ArrowUp"] = false;
+    if (self && self.vy !== 0) {
+      keys["ArrowUp"] = false;
+    }
   }, 1000 / 60);
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   const self = players[selfId];
   if (!self) return;
 
@@ -203,11 +200,11 @@ function draw() {
     ctx.textAlign = "center";
     ctx.fillText(p.name, px + 20, py - 54);
 
-    if (mode === "bronx") {
+    if (currentMode === "bronx") {
       ctx.fillStyle = "red";
-      ctx.fillRect(px, py - 44, 40, 5);
-      ctx.fillStyle = "lime";
-      ctx.fillRect(px, py - 44, (p.life / 100) * 40, 5);
+      ctx.fillRect(px + 2, py - 48, 40 * (p.life / 100), 5);
+      ctx.strokeStyle = "black";
+      ctx.strokeRect(px + 2, py - 48, 40, 5);
     }
   }
 }
@@ -237,11 +234,11 @@ document.addEventListener("keydown", e => {
   if (chatInput.style.display === "block") return;
   if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.key)) {
     keys[e.key] = true;
-    if (e.key === "ArrowLeft") lastDirection = "left";
-    if (e.key === "ArrowRight") lastDirection = "right";
+    if (e.key === "ArrowLeft") lastDir = "left";
+    if (e.key === "ArrowRight") lastDir = "right";
   }
-  if (mode === "bronx" && e.key === "a") {
-    socket.emit("attack", lastDirection);
+  if (e.key === "a" || e.key === "A") {
+    socket.emit("attack", lastDir);
   }
 });
 
@@ -251,22 +248,16 @@ document.addEventListener("keyup", e => {
   }
 });
 
-document.getElementById("btn-left").ontouchstart = () => {
-  keys["ArrowLeft"] = true;
-  lastDirection = "left";
-};
+document.getElementById("btn-left").ontouchstart = () => { keys["ArrowLeft"] = true; lastDir = "left"; };
 document.getElementById("btn-left").ontouchend = () => keys["ArrowLeft"] = false;
-document.getElementById("btn-right").ontouchstart = () => {
-  keys["ArrowRight"] = true;
-  lastDirection = "right";
-};
+document.getElementById("btn-right").ontouchstart = () => { keys["ArrowRight"] = true; lastDir = "right"; };
 document.getElementById("btn-right").ontouchend = () => keys["ArrowRight"] = false;
 document.getElementById("btn-jump").ontouchstart = () => keys["ArrowUp"] = true;
 document.getElementById("btn-jump").ontouchend = () => keys["ArrowUp"] = false;
 
-attackBtn.onclick = () => {
-  if (mode === "bronx") socket.emit("attack", lastDirection);
-};
+attackBtn.addEventListener("click", () => {
+  socket.emit("attack", lastDir);
+});
 </script>
 </body>
 </html>
