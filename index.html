@@ -156,8 +156,10 @@ function draw() {
   ctx.fillStyle = "#87CEEB"; // cielo
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = "#228B22"; // suelo
-  ctx.fillRect(-cameraX, 400, 5000, canvas.height - 400);
+  // Plataforma verde rectangular gruesa
+  ctx.fillStyle = "#228B22"; // color verde
+  ctx.fillRect(-cameraX, 400, 5000, 100); // altura fija de 100px
+
 
   ctx.fillStyle = "#000"; // pared final
   ctx.fillRect(3000 - cameraX, 250, 20, 200);
