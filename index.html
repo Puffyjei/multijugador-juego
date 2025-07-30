@@ -91,7 +91,10 @@ let selfId = null;
 let cameraX = 0;
 
 const robotImg = new Image();
-robotImg.src = "https://puffyjei.github.io/multijugador-juego/assets/robot.png";
+robotImg.crossOrigin = "anonymous";
+// Esta es la imagen correcta del robot clásico de Phaser:
+robotImg.src = "https://labs.phaser.io/assets/sprites/robot.png";
+
 
 function startGame() {
   username = document.getElementById("usernameInput").value || "Jugador";
