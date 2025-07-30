@@ -74,7 +74,10 @@
   <div class="btn" id="btn-right">→</div>
 </div>
 
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
+<!-- 🔧 Importante: sin "defer" aquí -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<!-- Tu script original con defer -->
 <script defer>
 const socket = io("https://multijugador-backend.onrender.com");
 const canvas = document.getElementById("game");
@@ -92,9 +95,7 @@ let cameraX = 0;
 
 const robotImg = new Image();
 robotImg.crossOrigin = "anonymous";
-// Esta es la imagen correcta del robot clásico de Phaser:
 robotImg.src = "https://labs.phaser.io/assets/sprites/robot.png";
-
 
 function startGame() {
   username = document.getElementById("usernameInput").value || "Jugador";
@@ -174,7 +175,6 @@ function draw() {
   }
 }
 
-// Salto sin volar
 setInterval(() => {
   socket.emit("keys", keys);
   const self = players[selfId];
@@ -183,7 +183,6 @@ setInterval(() => {
   }
 }, 1000 / 60);
 
-// Teclado
 document.addEventListener("keydown", e => {
   if (chatInput.style.display === "block") return;
   if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.key)) {
@@ -197,7 +196,6 @@ document.addEventListener("keyup", e => {
   }
 });
 
-// Móvil
 document.getElementById("btn-left").ontouchstart = () => keys["ArrowLeft"] = true;
 document.getElementById("btn-left").ontouchend = () => keys["ArrowLeft"] = false;
 document.getElementById("btn-right").ontouchstart = () => keys["ArrowRight"] = true;
