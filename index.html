@@ -258,6 +258,17 @@ document.getElementById("btn-right").ontouchstart = () => { keys["ArrowRight"] =
 document.getElementById("btn-right").ontouchend = () => keys["ArrowRight"] = false;
 document.getElementById("btn-jump").ontouchstart = () => keys["ArrowUp"] = true;
 document.getElementById("btn-jump").ontouchend = () => keys["ArrowUp"] = false;
+document.getElementById("btn-down").ontouchstart = () => keys["ArrowDown"] = true;
+document.getElementById("btn-down").ontouchend = () => keys["ArrowDown"] = false;
+
+document.getElementById("btn-place").ontouchstart = () => {
+  const self = players[selfId];
+  if (self) socket.emit("placeBlock", { x: self.x, y: self.y + 40 });
+};
+document.getElementById("btn-remove").ontouchstart = () => {
+  const self = players[selfId];
+  if (self) socket.emit("removeBlock", { x: self.x, y: self.y + 40 });
+};
 
 attackBtn.addEventListener("click", () => {
   socket.emit("attack", lastDir);
