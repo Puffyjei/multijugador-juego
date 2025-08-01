@@ -247,8 +247,8 @@ document.addEventListener("keydown", e => {
 });
 
 document.addEventListener("keyup", e => {
-  if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.key)) {
-    keys[e.key] = false;
+if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+  keys[e.key] = true;
   }
 });
 
