@@ -276,7 +276,27 @@ document.getElementById("btn-remove").ontouchstart = () => {
 attackBtn.addEventListener("click", () => {
   socket.emit("attack", lastDir);
 });
-</script>
+canvas.addEventListener("click", e => {
+  if (currentMode !== "creativo") return;
 
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  const self = players[selfId];
+  if (!self) return;
+
+  const worldX = self.x - canvas.width / 2 + mouseX;
+  const worldY = mouseY;
+
+  // Redondeamos para que se alinee a una cuadrícula de 40x40 (bloques)
+  const blockX = Math.floor(worldX / 40) * 40;
+  const blockY = Math.floor(worldY / 40) * 40;
+
+  // Por ahora colocamos un bloque con clic izquierdo (izquierdo por defecto)
+  socket.emit("placeBlock", { x: blockX, y: blockY });
+});
+
+</script>
 </body>
 </html>
