@@ -196,6 +196,16 @@ function draw() {
   ctx.fillRect(3000 - cameraX, 250, 20, 200);
 
   ctx.font = "16px Arial";
+    // Dibujar bloques (antes de los jugadores)
+  if (window.blocks) {
+    window.blocks.forEach(b => {
+      const bx = b.x - cameraX;
+      const by = b.y;
+      ctx.fillStyle = "#8B4513"; // marrón
+      ctx.fillRect(bx, by, 40, 40);
+    });
+  }
+
   for (let id in players) {
     const p = players[id];
     const px = p.x - cameraX;
