@@ -236,10 +236,12 @@ chatInput.addEventListener("keydown", e => {
 
 document.addEventListener("keydown", e => {
   if (chatInput.style.display === "block") return;
-  if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.key)) {
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
     keys[e.key] = true;
     if (e.key === "ArrowLeft") lastDir = "left";
     if (e.key === "ArrowRight") lastDir = "right";
+  }
+  
   }
   if (e.key === "a" || e.key === "A") {
     socket.emit("attack", lastDir);
