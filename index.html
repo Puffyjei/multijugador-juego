@@ -205,6 +205,31 @@ function draw() {
       ctx.fillRect(bx, by, 40, 40);
     });
   }
+  canvas.addEventListener("mousedown", e => {
+  const self = players[selfId];
+  if (!self) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const clickX = e.clientX - rect.left + cameraX;
+  const clickY = e.clientY - rect.top;
+
+  const blockX = Math.floor(clickX / 40) * 40;
+  const blockY = Math.floor(clickY / 40) * 40;
+
+  const dx = blockX - self.x;
+  const dy = blockY - self.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  const maxDistance = 100; // Rango permitido (en píxeles)
+
+  if (distance > maxDistance) return; // Demasiado lejos
+
+  if (e.button === 0) {
+    socket.emit("placeBlock", { x: blockX, y: blockY });
+  } else if (e.button === 2) {
+    socket.emit("removeBlock", { x: blockX, y: blockY });
+  }
+});
 
   for (let id in players) {
     const p = players[id];
@@ -308,6 +333,8 @@ canvas.addEventListener("click", e => {
   // Por ahora colocamos un bloque con clic izquierdo (izquierdo por defecto)
   socket.emit("placeBlock", { x: blockX, y: blockY });
 });
+// Evita el menú contextual del navegador al hacer clic derecho
+window.addEventListener("contextmenu", e => e.preventDefault());
 
 </script>
 </body>
