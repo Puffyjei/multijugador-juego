@@ -248,13 +248,6 @@ document.addEventListener("keydown", e => {
   }
 });
 
-  
-  }
-  if (e.key === "a" || e.key === "A") {
-    socket.emit("attack", lastDir);
-  }
-});
-
 document.addEventListener("keyup", e => {
   if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
     keys[e.key] = false;
