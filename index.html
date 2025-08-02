@@ -147,10 +147,12 @@ function selectMode(mode) {
 
   socket.on("init", id => selfId = id);
 
-  socket.on("state", serverPlayers => {
-    players = serverPlayers;
-    draw();
+  socket.on("state", data => {
+  players = data.players;
+  window.blocks = data.blocks || [];
+  draw();
   });
+
 
   socket.on("chat", ({ name, msg }) => {
     const div = document.createElement("div");
