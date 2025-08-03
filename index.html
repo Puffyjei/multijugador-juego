@@ -180,9 +180,9 @@ function selectMode(mode) {
 }
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const self = players[selfId];
-  if (!self) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpia el canvas
+  const self = players[selfId]; // Obtiene al jugador actual
+  if (!self) return; // Si aún no está cargado, no dibuja nada
 
   cameraX = self.x - canvas.width / 2;
 
